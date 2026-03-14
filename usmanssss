@@ -1,0 +1,47 @@
+name: Billions Network Agent Verification
+on:
+  workflow_dispatch:
+    inputs:
+      agent_name:
+        description: 'Nama Agent'
+        required: true
+        default: 'ayye'
+      agent_description:
+        description: 'Deskripsi Agent'
+        required: true
+        default: 'ayye AI Agent'
+
+jobs:
+  verify-identity:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      CI: true 
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install Dependencies
+        run: |
+          cd scripts
+          npm install
+      - name: Execute Verification
+        env:
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          AGENT_NAME: ${{ github.event.inputs.agent_name }}
+          AGENT_DESC: ${{ github.event.inputs.agent_description }}
+        run: |
+          cd scripts
+          
+          echo "Step 1: Creating Identity..."
+          yes | node createNewEthereumIdentity.js || echo "Identity already exists"
+          CHALLENGE=$(jq -n --arg name "$AGENT_NAME" --arg desc "$AGENT_DESC" '{name: $name, description: $desc}')
+          echo "Challenge Data: $CHALLENGE"
+          echo "Step 2: Linking Agent..."
+          printf "$AGENT_NAME\n$AGENT_DESC\n" | node manualLinkHumanToAgent.js --challenge "$CHALLENGE"
